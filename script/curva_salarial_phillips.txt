@@ -1,0 +1,370 @@
+*************************************************************
+********************** Ejercicio N° 1 ***********************
+*************************************************************
+*** Importar datos de Wooldridge
+*************************************************************
+net from http://www.stata.com/data/jwooldridge/
+net describe eacsap
+net get eacsap
+
+*** Ejercicio 10.8
+*************************************************************
+*** Usar los datos de norway.dta
+use norway
+
+*** Punto a)
+*************************************************************
+*** Declarar los datos como un panel
+xtset district year, delta(6)
+
+*** Regresion lineal
+reg lcrime d78 clrprc1 clrprc2
+
+*** Predecir los residuos
+predict vhat, resid
+
+*** Valores rezagados
+gen vhat_1 = l.vhat
+
+*** Regresion lineal para correlacion
+reg vhat vhat_1
+
+*** Punto b)
+*************************************************************
+*** Regresion por efectos fijos
+xtreg lcrime d78 clrprc1 clrprc2, fe
+
+*** Regresion con errores robustos
+reg clcrime cclrprc1 cclrprc2, robust
+
+*** Punto c)
+*************************************************************
+*** Probar H0: \beta_1 = \beta_2
+lincom cclrprc1 - cclrprc2
+
+*** Regresion robusta
+reg clcrime cavgclr, robust
+
+*** Regresion lineal
+reg clcrime cavgclr
+
+
+*** Ejercicio 19.10
+*************************************************************
+*** Borrar datos
+clear all
+*** Usar los datos de patent.dta
+use patent
+
+*** Punto a)
+*************************************************************
+***
+poisson patents y77-y81 lrnd lrnd_1 lrnd_2 lrnd_3 lrnd_4
+
+*** Punto c)
+*************************************************************
+*** Modelo lineal generalizado
+glm patents y77-y81 lrnd lrnd_1 lrnd_2 lrnd_3 lrnd_4, family(poisson) link(log) sca(x2)
+
+*** \hat{\sigma}
+di sqrt(17.16)
+
+*** Punto e)
+*************************************************************
+*** Modelo lineal generalizado - Poisson y funcion de enlace logaritmica
+glm patents y77-y81 lrnd lrnd_1 lrnd_2 lrnd_3 lrnd_4, family(poisson) link(log) robust cluster(cusip)
+
+*** Punto f)
+*************************************************************
+*** Elasticidad estimada de largo plazo 
+lincom lrnd + lrnd_1 + lrnd_2 + lrnd_3 + lrnd_4
+
+*** Punto g)
+*************************************************************
+*** modelo de Poisson con efectos fijos
+xtpoisson patents y77-y81 lrnd lrnd_1 lrnd_2 lrnd_3 lrnd_4, fe
+*** Elasticidad estimada de largo plazo 
+lincom lrnd + lrnd_1 + lrnd_2 + lrnd_3 + lrnd_4
+
+*************************************************************
+********************** Ejercicio N° 2 ***********************
+*************************************************************
+*** Importar datos
+*************************************************************
+global input "C:\Users\...\Seudo panel - datos"
+global output "C:\Users\...\Base_final"
+global excel "C:\Users\...\Seudo-panel 2015-2024"
+
+*** Procesar datos
+*************************************************************
+
+***Procesamiento datos 1996-2002 
+quietly forvalues i=1996/2002{
+use "$input\\Individual_M`i'.dta", clear
+keep estado agloreal h12 h13 ano4 p56 p58 pondera p21 p15p region
+quietly append using "$input\\Individual_O`i'.dta", keep(estado agloreal h12 h13 ano4 p56 p58 pondera p21 p15p region)
+quietly gen nivel_ed=0
+quietly replace nivel_ed=1 if p56=="1" & p58==2
+quietly replace nivel_ed=2 if p56=="1" & p58==1
+quietly replace nivel_ed=3 if (p56=="2" | p56=="3" | p56=="4" | p56=="5" | p56=="6") & p58==2
+quietly replace nivel_ed=4 if (p56=="2" | p56=="3" | p56=="4" | p56=="5" | p56=="6") & p58==1
+quietly replace nivel_ed=5 if (p56=="7" | p56=="8") & p58==2
+quietly replace nivel_ed=6 if (p56=="7" | p56=="8") & p58==1
+rename h12 ch06
+rename h13 ch04
+rename agloreal aglomerado
+rename p15p pp3e_tot
+keep estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region
+save "$output\\Base `i'.dta", replace
+}
+
+***Procesamiento datos 2003
+clear all
+use "$input\\Individual_t303.dta", clear
+keep estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region
+quietly append using "$input\\Individual_t403.dta", keep(estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region)
+quietly save "$output\\Base 2003.dta", replace
+
+***Procesamiento datos 2012
+clear all
+use "$input\\Individual_t112.dta", clear
+quietly append using "$input\\Individual_t212.dta", keep(estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region)
+quietly save "$output\\Base 2012.dta", replace
+
+***Procesamiento datos 2004-2009
+clear all
+quietly forvalues j=4/9{
+use "$input\\Individual_t10`j'.dta", clear
+keep estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region
+quietly forvalues i=20`j'(100)40`j'{
+append using "$input\\Individual_t`i'.dta", keep(estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region)
+}
+save "$output\\Base 200`j'.dta", replace
+}
+
+***Procesamiento datos 2010-2014
+clear all
+quietly forvalues j=10/14{
+use "$input\\Individual_t1`j'.dta", clear
+keep estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region
+quietly forvalues i=2`j'(100)4`j'{
+append using "$input\\Individual_t`i'.dta", keep(estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region)
+}
+save "$output\\Base 20`j'.dta", replace
+}
+
+***Procesamiento datos 2015
+clear all
+use "$input\\Individual_t115.dta", clear
+quietly append using "$input\\Individual_t215.dta", keep(estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region)
+quietly save "$output\\Base 2015.dta", replace
+
+***Procesamiento datos 2016
+clear all
+forvalues i = 2/4 {
+    import excel "$excel\\usu_individual_t`i'16", firstrow clear
+	rename *, lower
+    save "$input\\Individual_t`i'16.dta", replace 
+}
+
+
+*** Unificacion de datos
+clear all
+use "$input\\Individual_t216.dta", clear
+keep estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region
+quietly forvalues i=3/4{
+append using "$input\\Individual_t`i'16.dta", keep(estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region)
+save "$output\\Base 2016.dta", replace
+}
+
+*** Periodo 2017-2023
+clear all
+forvalues i = 17/23 {
+    forvalues j = 1/4 {
+        import excel "$excel\\usu_individual_t`j'`i'", firstrow clear
+        rename *, lower //minuscula
+		destring pp3e_tot, replace
+        save "$input\\Individual_t`j'`i'.dta", replace  
+    }
+}
+
+
+*** Unificar 2017-2023
+quietly forvalues j=17/23 {
+    use "$input\\Individual_t1`j'.dta", clear
+    keep estado aglomerado ch04 ch06 ano4 nivel_ed pondera p21 pp3e_tot region
+    * Convertir pp3e_tot a numérico si es de tipo cadena
+    capture destring pp3e_tot, replace force
+    quietly forvalues i=2`j'(100)4`j' {
+        * Convertir pp3e_tot a numérico en los archivos adicionales
+        use "$input\\Individual_t`i'.dta", clear
+        capture destring pp3e_tot, replace force
+        append using "$input\\Individual_t1`j'.dta", force
+    }
+    save "$output\\Base 20`j'.dta", replace
+}
+
+
+*** Cohortes
+*************************************************************
+gen cohort = floor((ano4 - ch06)/5)
+tabulate cohort
+bysort cohort: summarize pp3e_tot
+
+clear matrix
+clear
+quietly set mem 140m
+quietly forvalues i=1/28{
+local h`i'=1995+`i'
+use "$output\\Base `h`i''.dta", clear
+keep if (estado==1 | estado==2) & ch06>=18 & ch06<=65
+quietly gen desocup=estado==2
+quietly gen id=aglomerado
+quietly gen weight=pondera
+quietly gen age=ch06
+quietly gen f=ch04==2
+quietly gen year=ano4
+quietly gen ed=0
+quietly replace ed=3 if nivel_ed==1
+quietly replace ed=7 if nivel_ed==2
+quietly replace ed=9.5 if nivel_ed==3
+quietly replace ed=12 if nivel_ed==4
+quietly replace ed=14.5 if nivel_ed==5
+quietly replace ed=17 if nivel_ed==6
+sort id
+by id: egen p=sum(weight)
+gen a=desocup*weight/p
+gen b=f*weight/p
+gen c=ed*weight/p
+by id: egen u=sum(a)
+by id: egen fem=sum(b)
+by id: egen educ=sum(c)
+quietly replace u=u*100
+keep if p21>0
+quietly gen y=p21*12/52/pp3e_tot if pp3e_tot<=60
+gen cohort=0
+replace cohort=1 if age>=-3+`i' & age<=1+`i'
+replace cohort=2 if age>=2+`i' & age<=6+`i'
+replace cohort=3 if age>=7+`i' & age<=11+`i'
+replace cohort=4 if age>=12+`i' & age<=16+`i'
+replace cohort=5 if age>=17+`i' & age<=21+`i'
+replace cohort=6 if age>=22+`i' & age<=26+`i'
+replace cohort=7 if age>=27+`i' & age<=31+`i'
+replace cohort=8 if age>=32+`i' & age<=36+`i'
+replace cohort=9 if age>=37+`i' & age<=41+`i'
+replace cohort=10 if age>=42+`i' & age<=46+`i'
+replace cohort=11 if age>=47+`i' & age<=51+`i'
+replace cohort=12 if age>=52+`i' & age<=56+`i'
+drop if cohort==0
+sort id cohort
+by id cohort: egen n=sum(weight) if y!=.
+gen z=y*weight/n
+by id cohort: egen w=sum(z)
+drop a b c f ed p desocup z
+keep id-w region
+quietly save "$output\\t`h`i''.dta", replace
+}
+
+quietly forvalues i=28(-1)1{
+local h`i'=1995+`i'
+append using "$output\\t`h`i''.dta"
+}
+
+save "$output\\Base_final", replace 
+
+
+*** Correccion Cohortes
+*************************************************************
+quietly drop if cohort==1 & year<=2015
+quietly drop if cohort==2 & year<=2010
+quietly drop if cohort==3 & year<=2005
+quietly drop if cohort==4 & year<=2000
+quietly drop if cohort==9 & year>=2020
+quietly drop if cohort==10 & year>=2015
+quietly drop if cohort==11 & year>=2010
+quietly drop if cohort==12 & year>=2005
+collapse (mean) region age fem w u educ weight=n (count) n=age, by(year id cohort)
+quietly replace age=round(age)
+local k0="NOA"
+local k1="NEA"
+local k2="Cuyo"
+local k3="Pampeana"
+local k4="Patagonia"
+quietly forvalues i=0/4{
+gen reg`i'=region==4`i'
+label var reg`i' "`k`i''"
+}
+gen lw=log(w)
+gen lu=log(u)
+egen g=group(id cohort)
+order g year
+tsset g year
+quietly gen lw1=L.lw
+quietly gen dw=D.lw
+label var lw "LOG(W)"
+label var lw1 "LOG(W) t-1"
+label var dw "DLOG(W)"
+label var lu "LOG(U)"
+label var g "Unidad Individual"
+quietly forvalues i=1/12{
+gen c`i'=cohort==`i'
+label var c`i' "Cohort `i'"
+}
+quietly forvalues i=1996/2023{
+gen year`i'=year==`i'
+label var year`i' "Año i'"
+}
+label var n "Tamaño de cohorte"
+label var weight "Factor de Expansi󮢍
+label var cohort "Birth Cohort (5-Year Span)"
+label define e 1 "[1994-1998]" 2 "[1989-1993]" 3 "[1984-1988]" 4 "[1979-1983]" 5 "[1974-1978]" 6 "[1969-1973]" 7 "[1964-1968]" 8 "[1959-1963]" 9 "[1954-1958]" 10"[1949-1953]" 11 "[1944-1948]" 12 "[1939-1943]"
+label define g 2 "Gran La Plata" 3 "Bahía Blanca - Cerri" 4 "Gran Rosario" 5 "Gran Santa Fe" 6 "Gran Paraná" 7 "Posadas" 8 "Gran Resistencia" 9 "Comodoro Rivadavia - Rada Tilly" 10 "Gran Mendoza" 12 "Corrientes" 13 "Gran Córdoba" 14 "Concordia" 15 "Formosa" 17 "Neuquén - Plottier" 18 "Santiago del Estero - La Banda" 19 "Jujuy - Palpalá" 20 "Río Gallegos" 22 "Gran Catamarca" 23 "Salta" 25 "La Rioja" 26 "San Luis - El Chorrillo" 27 "Gran San Juan" 29 "Gran Tucumán - Tafí Viejo" 30 "Santa Rosa - Toay" 31 "Ushuaia - Río Grande" 32 "Ciudad de Buenos Aires" 33 "Partidos del GBA" 34 "Mar del Plata - Batán" 36 "Río Cuarto" 38 "San Nicolás - Villa Constitución" 91 "Rawson - Trelew" 93 "Viedma - Carmen de Patagones"
+label define r 1 "Gran Buenos Aires" 40 "NOA" 41 "NEA" 42 "Cuyo" 43 "Pampeana" 44 "Patagonia"
+label values region r
+label values id g
+label values cohort e
+label var fem "=1 Mujer"
+label var age "Edad"
+label var year "año"
+label var region "Region"
+label var id "Aglomerado"
+label var u "Tasa de Desempleo %"
+label var educ "Año de Escolaridad"
+label var w "Salario Horario"
+
+save "$output\\Base_final", replace 
+
+*** Curva Salarial Dinamica - Cohort Data Pseudo Panel 1996-2023
+**************************************************************
+clear
+local h8="c2-c6"
+local h7="c2-c8"
+local h6="c2-c9"
+local h5="c2-c10"
+local h4="c2-c14"
+
+* Estimaciquietly forvalues i=8(-1)4{
+use "$output\\Base_final.dta", clear
+regress lw lw1 lu fem educ year1998-year2023 reg0-reg4 `h`i'' if n>=100
+
+*** Curva de Phillips - Cohort Data Pseudo Panel 1996-2023
+**************************************************************
+
+clear
+local h8="c2-c6"
+local h7="c2-c8"
+local h6="c2-c9"
+local h5="c2-c10"
+local h4="c2-c14"
+
+* Estimaci󮍊quietly forvalues i=8(-1)4{
+use "$output\\Base_final.dta", clear
+regress dw lu fem educ year1998-year2023 reg0-reg4 `h`i'' if n>=100
+
+*** Curva Salarial Dinamica - Efectos fijos
+**************************************************************
+xtreg lw lu fem educ year1998-year2023 reg0-reg4, fe vce(robust)
+
+*** Curva de Phillips - Efectos fijos
+**************************************************************
+xtreg dw lu fem educ year1998-year2023 reg0-reg4, fe vce(robust)
